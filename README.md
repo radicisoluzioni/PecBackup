@@ -108,3 +108,47 @@ Esempio:
 3.  Creare /srv/pec-archive\
 4.  Avviare: `docker compose up -d`\
 5.  Monitorare: `docker compose logs -f pec-archiver`
+
+## 📆 Backup manuale (Date specifiche o Intervalli)
+
+Per casi di emergenza in cui è necessario effettuare il backup di un giorno
+specifico o di un intervallo di date, è disponibile lo script `backup_range.py`.
+
+### Backup di un giorno specifico
+
+```bash
+python -m src.backup_range --date 2024-01-15
+```
+
+### Backup di un intervallo di date
+
+```bash
+python -m src.backup_range --date-from 2024-01-15 --date-to 2024-01-22
+```
+
+### Backup di una settimana
+
+```bash
+python -m src.backup_range --date-from 2024-01-15 --date-to 2024-01-21
+```
+
+### Opzioni disponibili
+
+| Opzione | Descrizione |
+|---------|-------------|
+| `--date`, `-d` | Data singola da backuppare (formato YYYY-MM-DD) |
+| `--date-from`, `-f` | Data iniziale dell'intervallo (formato YYYY-MM-DD) |
+| `--date-to`, `-t` | Data finale dell'intervallo (formato YYYY-MM-DD) |
+| `--config`, `-c` | Percorso al file di configurazione |
+| `--log-level`, `-l` | Livello di logging (DEBUG, INFO, WARNING, ERROR) |
+
+### Esempi con Docker
+
+```bash
+# Backup di un giorno specifico
+docker compose exec pec-archiver python -m src.backup_range --date 2024-01-15
+
+# Backup di una settimana
+docker compose exec pec-archiver python -m src.backup_range \
+    --date-from 2024-01-15 --date-to 2024-01-21
+```
