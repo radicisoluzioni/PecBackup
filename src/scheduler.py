@@ -15,6 +15,7 @@ from typing import Optional
 from .config import load_config
 from .worker import AccountWorker, WorkerError
 from .reporting import aggregate_summaries
+from .notifications import send_notification, NotificationError
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +50,7 @@ class PECScheduler:
         self.imap_settings = self.config.get('imap', {})
         self.accounts = self.config['accounts']
         self.run_time = self.config.get('scheduler', {}).get('run_time', '01:00')
+        self.notifications_config = self.config.get('notifications', {})
     
     def run_archive_job(self, target_date: datetime = None) -> dict:
         """
@@ -105,7 +107,29 @@ class PECScheduler:
             f"{report['total_messages']} total messages"
         )
         
+        # Send notification if configured
+        self._send_notification(report, target_date)
+        
         return report
+    
+    def _send_notification(self, report: dict, target_date: datetime) -> None:
+        """
+        Send notification with backup report.
+        
+        Args:
+            report: Aggregated report dictionary
+            target_date: Date that was archived
+        """
+        try:
+            sent = send_notification(
+                config=self.notifications_config,
+                report=report,
+                target_date=target_date
+            )
+            if sent:
+                logger.info("Notification sent successfully")
+        except NotificationError as e:
+            logger.error(f"Failed to send notification: {e}")
     
     def schedule_daily(self) -> None:
         """Schedule the archive job to run daily at configured time."""

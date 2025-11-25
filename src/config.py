@@ -117,6 +117,19 @@ def validate_config(config: dict) -> None:
         'run_time': '01:00'
     })
     
+    # Set default notifications config (disabled by default)
+    config.setdefault('notifications', {
+        'enabled': False
+    })
+    
+    # Validate notifications if enabled
+    notifications = config.get('notifications', {})
+    if notifications.get('enabled', False):
+        from .notifications import validate_notification_config
+        errors = validate_notification_config(notifications)
+        if errors:
+            raise ConfigError(f"Invalid notifications configuration: {'; '.join(errors)}")
+    
     # Set defaults for accounts
     for account in config['accounts']:
         account.setdefault('port', 993)
@@ -138,6 +151,9 @@ def get_default_config() -> dict:
         },
         'scheduler': {
             'run_time': '01:00'
+        },
+        'notifications': {
+            'enabled': False
         },
         'accounts': []
     }

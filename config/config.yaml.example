@@ -23,6 +23,33 @@ scheduler:
   # Time to run the daily archive (HH:MM format)
   run_time: "01:00"
 
+# Email notification settings
+# Configure to receive daily backup reports and error alerts
+notifications:
+  # Enable or disable notifications (true/false)
+  enabled: false
+  
+  # When to send notifications:
+  # - "always": Send notification after every backup (success or error)
+  # - "error": Send notification only when errors occur
+  send_on: "always"
+  
+  # Email recipients (single address or list of addresses)
+  recipients:
+    - admin@example.com
+    - backup-alerts@example.com
+  # Or use a single recipient:
+  # recipients: admin@example.com
+  
+  # SMTP server configuration
+  smtp:
+    host: smtp.example.com
+    port: 587  # Use 587 for TLS, 465 for SSL
+    username: ${SMTP_USERNAME}  # Use environment variable
+    password: ${SMTP_PASSWORD}  # Use environment variable
+    sender: pec-archiver@example.com  # Optional, defaults to username
+    use_tls: true  # Use STARTTLS (port 587), set false for SSL (port 465)
+
 # PEC accounts to archive
 accounts:
   - username: account1@pec.it

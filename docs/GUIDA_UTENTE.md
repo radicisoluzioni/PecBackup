@@ -7,10 +7,11 @@ Questa guida fornisce istruzioni dettagliate per l'installazione, configurazione
 1. [Introduzione](#introduzione)
 2. [Installazione](#installazione)
 3. [Configurazione](#configurazione)
-4. [Utilizzo](#utilizzo)
-5. [Backup Manuale](#backup-manuale)
-6. [Monitoraggio](#monitoraggio)
-7. [Risoluzione Problemi](#risoluzione-problemi)
+4. [Notifiche Email](#notifiche-email)
+5. [Utilizzo](#utilizzo)
+6. [Backup Manuale](#backup-manuale)
+7. [Monitoraggio](#monitoraggio)
+8. [Risoluzione Problemi](#risoluzione-problemi)
 
 ---
 
@@ -23,6 +24,7 @@ PEC Archiver è un sistema automatizzato per il backup giornaliero delle caselle
 - Salva i messaggi in formato .eml standard
 - Genera indici consultabili (CSV e JSON)
 - Crea archivi compressi con verifica di integrità
+- Invia notifiche email con report giornalieri e alert in caso di errori
 
 ### Perché usare PEC Archiver?
 
@@ -148,6 +150,104 @@ imap:
   timeout: 30      # Timeout connessione in secondi
   batch_size: 100  # Messaggi per batch
 ```
+
+---
+
+## Notifiche Email
+
+Il sistema può inviare notifiche email con il report giornaliero del backup. Questa funzionalità è opzionale e può essere abilitata o disabilitata.
+
+### Abilitare le Notifiche
+
+Aggiungere la sezione `notifications` al file `config/config.yaml`:
+
+```yaml
+notifications:
+  # Abilita le notifiche (true/false)
+  enabled: true
+  
+  # Quando inviare le notifiche:
+  # - "always": dopo ogni backup (successo o errore)
+  # - "error": solo in caso di errori
+  send_on: "always"
+  
+  # Destinatari (uno o più indirizzi email)
+  recipients:
+    - admin@azienda.it
+    - it-team@azienda.it
+  
+  # Configurazione server SMTP
+  smtp:
+    host: smtp.azienda.it
+    port: 587
+    username: ${SMTP_USERNAME}
+    password: ${SMTP_PASSWORD}
+    sender: pec-archiver@azienda.it  # Opzionale
+    use_tls: true
+```
+
+### Configurare le Variabili d'Ambiente per SMTP
+
+Nel file `docker-compose.yml`, aggiungere le credenziali SMTP:
+
+```yaml
+environment:
+  - SMTP_USERNAME=username_smtp
+  - SMTP_PASSWORD=password_smtp
+```
+
+Oppure usare un file `.env`:
+
+```bash
+# .env
+SMTP_USERNAME=username_smtp
+SMTP_PASSWORD=password_smtp
+```
+
+### Opzioni di Invio
+
+| Valore | Descrizione |
+|--------|-------------|
+| `always` | Invia notifica dopo ogni backup, indipendentemente dal risultato |
+| `error` | Invia notifica solo quando si verificano errori durante il backup |
+
+### Destinatari Multipli
+
+È possibile configurare uno o più destinatari:
+
+```yaml
+# Singolo destinatario
+recipients: admin@azienda.it
+
+# Più destinatari
+recipients:
+  - admin@azienda.it
+  - backup-team@azienda.it
+  - responsabile@azienda.it
+```
+
+### Disabilitare le Notifiche
+
+Per disabilitare le notifiche, impostare `enabled: false`:
+
+```yaml
+notifications:
+  enabled: false
+```
+
+### Esempio di Email di Notifica
+
+La notifica include:
+
+- **Data del backup** archiviato
+- **Stato generale**: successo o errori
+- **Statistiche**:
+  - Numero di account processati
+  - Account con successo
+  - Account con errori
+  - Totale messaggi archiviati
+- **Dettaglio per account**: stato e numero di messaggi
+- **Eventuali errori**: descrizione degli errori riscontrati
 
 ---
 
@@ -366,6 +466,40 @@ print('Configurazione OK')
 print(f'Accounts: {len(config[\"accounts\"])}')
 "
 ```
+
+### Errore: Notifiche Email non Inviate
+
+**Sintomo**: Le notifiche non arrivano
+
+**Soluzioni**:
+1. Verificare che `notifications.enabled` sia `true`
+2. Controllare la configurazione SMTP:
+   ```bash
+   docker compose exec pec-archiver python -c "
+   from src.config import load_config
+   config = load_config()
+   notifications = config.get('notifications', {})
+   print(f'Enabled: {notifications.get(\"enabled\")}')
+   print(f'Recipients: {notifications.get(\"recipients\")}')
+   print(f'SMTP Host: {notifications.get(\"smtp\", {}).get(\"host\")}')
+   "
+   ```
+3. Verificare le credenziali SMTP
+4. Controllare i log per errori:
+   ```bash
+   docker compose logs pec-archiver | grep -i notification
+   ```
+
+### Errore: Connessione SMTP Fallita
+
+**Sintomo**: `SMTP error` o `Connection refused` nei log
+
+**Soluzioni**:
+1. Verificare host e porta del server SMTP
+2. Controllare se `use_tls` è corretto per la porta:
+   - Porta 587: `use_tls: true` (STARTTLS)
+   - Porta 465: `use_tls: false` (SSL diretto)
+3. Verificare che il firewall consenta la connessione
 
 ---
 

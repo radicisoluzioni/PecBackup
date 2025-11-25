@@ -16,6 +16,7 @@ Sistema batch containerizzato per l'archiviazione automatica giornaliera delle c
 - ✅ **Containerizzato** - Deployment semplice con Docker
 - ✅ **Resiliente** - Retry automatico con backoff esponenziale
 - ✅ **Sicuro** - Connessioni IMAP SSL/TLS, supporto variabili d'ambiente
+- ✅ **Notifiche email** - Report giornalieri e alert in caso di errori
 
 ## 🚀 Quick Start
 
@@ -94,6 +95,19 @@ imap:
 scheduler:
   run_time: "01:00"
 
+# Notifiche email (opzionale)
+notifications:
+  enabled: true
+  send_on: "always"  # "always" o "error"
+  recipients:
+    - admin@example.com
+  smtp:
+    host: smtp.example.com
+    port: 587
+    username: ${SMTP_USERNAME}
+    password: ${SMTP_PASSWORD}
+    use_tls: true
+
 # Account PEC da archiviare
 accounts:
   - username: account1@pec.it
@@ -120,6 +134,9 @@ services:
       - TZ=Europe/Rome
       - PEC_ARCHIVE_CONFIG=/app/config/config.yaml
       - PEC_PASSWORD_1=your_password_here
+      # Notifiche email (opzionale)
+      - SMTP_USERNAME=your_smtp_username
+      - SMTP_PASSWORD=your_smtp_password
     volumes:
       - ./config:/app/config:ro
       - /srv/pec-archive:/data/pec-archive
@@ -239,7 +256,54 @@ docker compose exec pec-archiver python -m src.backup_range \
 | `indexing.py` | Genera indici CSV e JSON |
 | `compression.py` | Crea archivi tar.gz e digest SHA256 |
 | `reporting.py` | Genera summary.json e report aggregati |
+| `notifications.py` | Invia notifiche email con report e alert |
 | `config.py` | Carica e valida configurazione YAML |
+
+## 📬 Notifiche Email
+
+Il sistema può inviare notifiche email con il report giornaliero del backup e alert in caso di errori.
+
+### Configurazione
+
+```yaml
+notifications:
+  # Abilita/disabilita le notifiche
+  enabled: true
+  
+  # Quando inviare: "always" (sempre) o "error" (solo in caso di errori)
+  send_on: "always"
+  
+  # Destinatari (uno o più indirizzi email)
+  recipients:
+    - admin@example.com
+    - backup-team@example.com
+  
+  # Configurazione server SMTP
+  smtp:
+    host: smtp.example.com
+    port: 587
+    username: ${SMTP_USERNAME}
+    password: ${SMTP_PASSWORD}
+    sender: pec-archiver@example.com  # Opzionale
+    use_tls: true  # true per TLS (porta 587), false per SSL (porta 465)
+```
+
+### Opzioni di Invio
+
+| Valore `send_on` | Comportamento |
+|------------------|---------------|
+| `always` | Invia notifica dopo ogni backup (successo o errore) |
+| `error` | Invia notifica solo quando si verificano errori |
+
+### Contenuto della Notifica
+
+La notifica include:
+- ✅ Data del backup
+- ✅ Stato generale (successo/errori)
+- ✅ Numero di account processati
+- ✅ Numero di messaggi archiviati
+- ✅ Dettaglio per ogni account
+- ✅ Eventuali errori riscontrati
 
 ## 🔐 Sicurezza
 

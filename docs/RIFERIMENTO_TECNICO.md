@@ -63,6 +63,7 @@ Documentazione tecnica per sviluppatori e amministratori di sistema.
 | Indexer | `indexing.py` | Generazione indici |
 | Compression | `compression.py` | Creazione archivi |
 | Reporting | `reporting.py` | Generazione summary |
+| Notifications | `notifications.py` | Notifiche email |
 | Config | `config.py` | Gestione configurazione |
 
 ---
@@ -293,6 +294,46 @@ def expand_env_vars(value: Any) -> Any:
     """Espande variabili d'ambiente (${VAR_NAME})."""
 ```
 
+### notifications.py
+
+```python
+def send_notification(
+    config: dict,
+    report: dict,
+    target_date: datetime,
+    force_send: bool = False
+) -> bool:
+    """
+    Invia notifica email con il report del backup.
+    
+    Args:
+        config: Configurazione notifiche
+        report: Report aggregato del backup
+        target_date: Data archiviata
+        force_send: Forza invio anche se disabilitato
+    
+    Returns:
+        True se la notifica è stata inviata, False altrimenti
+    
+    Raises:
+        NotificationError: Se l'invio fallisce
+    """
+
+def format_report_html(report: dict, target_date: datetime) -> str:
+    """Formatta il report in HTML per email."""
+
+def format_report_text(report: dict, target_date: datetime) -> str:
+    """Formatta il report in testo semplice."""
+
+def validate_notification_config(config: dict) -> list[str]:
+    """
+    Valida la configurazione delle notifiche.
+    
+    Returns:
+        Lista di messaggi di errore (vuota se valida)
+    """
+```
+
 ---
 
 ## Formato File
@@ -374,12 +415,35 @@ abc123def456...  archive-account-2024-01-15.tar.gz
 1. Modificare `compression.py`
 2. Supporto per formati alternativi (zip, 7z, etc.)
 
-### Notifiche
+### Notifiche Email
 
-Per aggiungere notifiche (email, Slack, etc.):
+Le notifiche email sono già integrate nel sistema. Per personalizzarle:
 
-1. Creare modulo `notifications.py`
-2. Integrare in `reporting.py` dopo la generazione del summary
+1. Modificare `notifications.py` per:
+   - Cambiare il formato del report (HTML/testo)
+   - Aggiungere allegati
+   - Personalizzare i contenuti
+
+2. Per aggiungere altri canali (Slack, Teams, etc.):
+   - Estendere `notifications.py` con nuove funzioni
+   - Aggiungere configurazione nel file YAML
+
+#### Configurazione Notifiche
+
+```yaml
+notifications:
+  enabled: true                    # Abilita/disabilita
+  send_on: "always"               # "always" o "error"
+  recipients:                      # Lista destinatari
+    - admin@example.com
+  smtp:
+    host: smtp.example.com
+    port: 587
+    username: ${SMTP_USERNAME}
+    password: ${SMTP_PASSWORD}
+    sender: pec-archiver@example.com
+    use_tls: true
+```
 
 ---
 
@@ -403,10 +467,11 @@ python -m pytest tests/test_config.py -v
 ```
 tests/
 ├── __init__.py
-├── test_backup_range.py  # Test script backup intervalli
-├── test_compression.py   # Test compressione
-├── test_config.py        # Test configurazione
-├── test_indexing.py      # Test indicizzazione
+├── test_backup_range.py   # Test script backup intervalli
+├── test_compression.py    # Test compressione
+├── test_config.py         # Test configurazione
+├── test_indexing.py       # Test indicizzazione
+├── test_notifications.py  # Test notifiche email
 └── test_storage.py       # Test storage
 ```
 
