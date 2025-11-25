@@ -3,6 +3,8 @@ IMAP client module for PEC Archiver.
 Handles IMAP connections and message fetching.
 """
 
+from __future__ import annotations
+
 import imaplib
 import email
 import ssl

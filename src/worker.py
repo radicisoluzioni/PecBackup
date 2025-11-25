@@ -3,6 +3,8 @@ Account Worker module for PEC Archiver.
 Processes a single PEC account's mailbox.
 """
 
+from __future__ import annotations
+
 import logging
 from datetime import datetime
 from typing import Optional

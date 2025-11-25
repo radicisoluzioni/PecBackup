@@ -3,6 +3,8 @@ Compression module for PEC Archiver.
 Creates .tar.gz archives and generates SHA256 digest.
 """
 
+from __future__ import annotations
+
 import os
 import tarfile
 import hashlib

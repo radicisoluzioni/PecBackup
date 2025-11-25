@@ -3,6 +3,8 @@ Reporting module for PEC Archiver.
 Generates summary.json with archive statistics and status.
 """
 
+from __future__ import annotations
+
 import os
 import json
 import logging

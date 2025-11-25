@@ -3,6 +3,8 @@ Configuration module for PEC Archiver.
 Loads and validates configuration from YAML file.
 """
 
+from __future__ import annotations
+
 import os
 import re
 import yaml

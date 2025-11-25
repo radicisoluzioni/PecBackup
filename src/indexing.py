@@ -3,6 +3,8 @@ Indexing module for PEC Archiver.
 Generates index.csv and index.json files.
 """
 
+from __future__ import annotations
+
 import os
 import csv
 import json

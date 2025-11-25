@@ -3,6 +3,8 @@ Storage module for PEC Archiver.
 Handles saving .eml files and creating folder structure.
 """
 
+from __future__ import annotations
+
 import os
 import re
 import logging

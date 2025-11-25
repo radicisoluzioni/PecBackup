@@ -3,6 +3,8 @@ Scheduler module for PEC Archiver.
 Main scheduler that runs daily at configured time.
 """
 
+from __future__ import annotations
+
 import schedule
 import time
 import logging
