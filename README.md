@@ -25,7 +25,7 @@ Sistema batch containerizzato per l'archiviazione automatica giornaliera delle c
 
 ```bash
 git clone https://github.com/radicisoluzioni/SogertPecBackup.git
-cd SogertPecBackup
+cd PecBackup
 ```
 
 ### 2. Configurare le credenziali
