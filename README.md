@@ -17,6 +17,7 @@ Sistema batch containerizzato per l'archiviazione automatica giornaliera delle c
 - ✅ **Resiliente** - Retry automatico con backoff esponenziale
 - ✅ **Sicuro** - Connessioni IMAP SSL/TLS, supporto variabili d'ambiente
 - ✅ **Notifiche email** - Report giornalieri e alert in caso di errori
+- ✅ **REST API** - Ricerca e download email archiviate via API
 
 ## 🚀 Quick Start
 
@@ -258,6 +259,72 @@ docker compose exec pec-archiver python -m src.backup_range \
 | `reporting.py` | Genera summary.json e report aggregati |
 | `notifications.py` | Invia notifiche email con report e alert |
 | `config.py` | Carica e valida configurazione YAML |
+| `api.py` | REST API per ricerca e download email |
+| `api_server.py` | Server FastAPI per l'API REST |
+
+## 🔌 REST API
+
+Il sistema include una REST API per cercare e scaricare le email archiviate.
+
+### Avvio dell'API
+
+L'API viene avviata automaticamente con Docker Compose:
+
+```bash
+docker compose up -d pec-api
+```
+
+L'API sarà disponibile su `http://localhost:8000`.
+
+### Documentazione API
+
+La documentazione interattiva è disponibile su:
+- **Swagger UI**: http://localhost:8000/api/docs
+- **ReDoc**: http://localhost:8000/api/redoc
+
+### Endpoints
+
+| Metodo | Endpoint | Descrizione |
+|--------|----------|-------------|
+| GET | `/api/v1/health` | Health check |
+| GET | `/api/v1/accounts` | Lista degli account archiviati |
+| GET | `/api/v1/accounts/{account}/dates?year=YYYY` | Date archiviate per un account |
+| GET | `/api/v1/accounts/{account}/emails/{date}` | Email di una data specifica |
+| GET | `/api/v1/search` | Ricerca email con filtri |
+| GET | `/api/v1/accounts/{account}/emails/{date}/{folder}/{filename}` | Download email (.eml) |
+| GET | `/api/v1/accounts/{account}/archive/{date}` | Download archivio (.tar.gz) |
+
+### Esempi di Ricerca
+
+```bash
+# Ricerca per oggetto
+curl "http://localhost:8000/api/v1/search?subject=fattura"
+
+# Ricerca per mittente
+curl "http://localhost:8000/api/v1/search?from=mittente@pec.it"
+
+# Ricerca per destinatario
+curl "http://localhost:8000/api/v1/search?to=destinatario@pec.it"
+
+# Ricerca per intervallo di date
+curl "http://localhost:8000/api/v1/search?date_from=2024-01-01&date_to=2024-01-31"
+
+# Ricerca combinata
+curl "http://localhost:8000/api/v1/search?subject=fattura&account=account1&date_from=2024-01-01"
+```
+
+### Download Email
+
+```bash
+# Lista email di una data
+curl "http://localhost:8000/api/v1/accounts/account1/emails/2024-01-15"
+
+# Download singola email
+curl -O "http://localhost:8000/api/v1/accounts/account1/emails/2024-01-15/INBOX/123_subject.eml"
+
+# Download archivio compresso
+curl -O "http://localhost:8000/api/v1/accounts/account1/archive/2024-01-15"
+```
 
 ## 📬 Notifiche Email
 
