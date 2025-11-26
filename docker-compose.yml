@@ -33,3 +33,37 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+  # REST API for searching and downloading archived emails
+  pec-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    image: pec-api:latest
+    container_name: pec-api
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Rome
+      - PEC_ARCHIVE_BASE_PATH=/data/pec-archive
+    ports:
+      # Expose API on port 8000
+      - "8000:8000"
+    volumes:
+      # Archive storage directory (read-only for API)
+      - /srv/pec-archive:/data/pec-archive:ro
+    # Optional: limit resources
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '1.0'
+    #       memory: 512M
+    #     reservations:
+    #       cpus: '0.25'
+    #       memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    depends_on:
+      - pec-archiver
