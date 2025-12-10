@@ -258,6 +258,7 @@ class AccountWorker:
                     raw_email
                 )
                 # Check if message is unread (doesn't have \Seen flag)
+                # Note: flags are bytes like b'\\Seen', b'\\Answered', etc.
                 is_unread = not any(flag.lower() == b'\\seen' for flag in flags)
                 indexer.add_message(msg, uid, folder, filepath, is_unread=is_unread)
             except StorageError as e:

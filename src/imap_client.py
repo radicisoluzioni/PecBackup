@@ -183,11 +183,13 @@ class IMAPClient:
             
             # Parse flags from response
             # data[0][0] contains something like: b'1 (FLAGS (\\Seen) RFC822 {12345}'
+            # Standard IMAP flags: \Seen, \Answered, \Flagged, \Draft, \Deleted, \Recent
             flags = []
             if data[0][0]:
                 flags_str = data[0][0].decode('utf-8')
                 if 'FLAGS' in flags_str:
                     # Extract flags between parentheses after FLAGS
+                    # Pattern matches standard IMAP flags which don't contain nested parentheses
                     flags_match = re.search(r'FLAGS \(([^)]*)\)', flags_str)
                     if flags_match:
                         flags_content = flags_match.group(1)
