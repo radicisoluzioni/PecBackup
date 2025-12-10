@@ -10,7 +10,7 @@ import time
 import logging
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Optional
+from typing import Optional, List, Tuple
 
 from .config import load_config
 from .worker import AccountWorker, WorkerError
@@ -137,7 +137,7 @@ class PECScheduler:
     
     def _handle_s3_uploads(
         self,
-        account_results: list[tuple[str, str]],
+        account_results: List[Tuple[str, str]],
         target_date: datetime
     ) -> None:
         """
