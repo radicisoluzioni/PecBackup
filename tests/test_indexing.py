@@ -87,6 +87,26 @@ class TestExtractMessageInfo:
             assert info['size'] > 0
         
         os.unlink(f.name)
+    
+    def test_extract_message_with_unread_flag(self):
+        """Test extracting message info with unread flag."""
+        msg = EmailMessage()
+        msg['Subject'] = 'Unread Message'
+        msg['From'] = 'sender@example.com'
+        
+        with tempfile.NamedTemporaryFile(suffix='.eml', delete=False) as f:
+            f.write(msg.as_bytes())
+            f.flush()
+            
+            # Test with unread flag
+            info = extract_message_info(msg, '123', 'INBOX', f.name, is_unread=True)
+            assert info['is_unread'] is True
+            
+            # Test with read flag
+            info = extract_message_info(msg, '124', 'INBOX', f.name, is_unread=False)
+            assert info['is_unread'] is False
+        
+        os.unlink(f.name)
 
 
 class TestIndexer:
@@ -114,6 +134,31 @@ class TestIndexer:
         
         os.unlink(f.name)
     
+    def test_add_message_with_unread_flag(self, indexer):
+        """Test adding a message with unread flag to index."""
+        msg = EmailMessage()
+        msg['Subject'] = 'Unread Test'
+        
+        with tempfile.NamedTemporaryFile(suffix='.eml', delete=False, dir=indexer.account_path) as f:
+            f.write(msg.as_bytes())
+            f.flush()
+            
+            # Add unread message
+            indexer.add_message(msg, '1', 'INBOX', f.name, is_unread=True)
+            
+            assert len(indexer.messages) == 1
+            assert indexer.messages[0]['uid'] == '1'
+            assert indexer.messages[0]['is_unread'] is True
+            
+            # Add read message
+            indexer.add_message(msg, '2', 'INBOX', f.name, is_unread=False)
+            
+            assert len(indexer.messages) == 2
+            assert indexer.messages[1]['uid'] == '2'
+            assert indexer.messages[1]['is_unread'] is False
+        
+        os.unlink(f.name)
+    
     def test_generate_csv(self, indexer):
         """Test CSV generation."""
         msg = EmailMessage()
@@ -138,6 +183,36 @@ class TestIndexer:
         
         os.unlink(f.name)
     
+    def test_generate_csv_with_unread_flag(self, indexer):
+        """Test CSV generation with unread flag."""
+        msg = EmailMessage()
+        msg['Subject'] = 'Test Subject'
+        msg['From'] = 'sender@example.com'
+        
+        with tempfile.NamedTemporaryFile(suffix='.eml', delete=False, dir=indexer.account_path) as f:
+            f.write(msg.as_bytes())
+            f.flush()
+            
+            indexer.add_message(msg, '1', 'INBOX', f.name, is_unread=True)
+            csv_path = indexer.generate_csv()
+            
+            assert os.path.exists(csv_path)
+            
+            with open(csv_path, 'r', encoding='utf-8') as csvfile:
+                reader = csv.DictReader(csvfile)
+                rows = list(reader)
+                assert len(rows) == 1
+                assert rows[0]['uid'] == '1'
+                assert rows[0]['is_unread'] == 'True'
+                
+            # Verify the is_unread field is in the header
+            with open(csv_path, 'r', encoding='utf-8') as csvfile:
+                reader = csv.reader(csvfile)
+                headers = next(reader)
+                assert 'is_unread' in headers
+        
+        os.unlink(f.name)
+    
     def test_generate_json(self, indexer):
         """Test JSON generation."""
         msg = EmailMessage()
@@ -157,6 +232,28 @@ class TestIndexer:
                 assert len(data) == 1
                 assert data[0]['uid'] == '1'
                 assert data[0]['subject'] == 'Test Subject'
+        
+        os.unlink(f.name)
+    
+    def test_generate_json_with_unread_flag(self, indexer):
+        """Test JSON generation with unread flag."""
+        msg = EmailMessage()
+        msg['Subject'] = 'Test Subject'
+        
+        with tempfile.NamedTemporaryFile(suffix='.eml', delete=False, dir=indexer.account_path) as f:
+            f.write(msg.as_bytes())
+            f.flush()
+            
+            indexer.add_message(msg, '1', 'INBOX', f.name, is_unread=True)
+            json_path = indexer.generate_json()
+            
+            assert os.path.exists(json_path)
+            
+            with open(json_path, 'r', encoding='utf-8') as jsonfile:
+                data = json.load(jsonfile)
+                assert len(data) == 1
+                assert data[0]['uid'] == '1'
+                assert data[0]['is_unread'] is True
         
         os.unlink(f.name)
     
