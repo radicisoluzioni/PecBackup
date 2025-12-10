@@ -4,6 +4,11 @@
 # Base path for archive storage
 base_path: /data/pec-archive
 
+# Backup mode: "standard" or "s3_sync"
+# - standard: Compress and keep archives locally (default)
+# - s3_sync: Store uncompressed emails locally, upload daily archives to S3, then delete local archives
+backup_mode: standard
+
 # Number of concurrent workers for processing accounts
 concurrency: 4
 
@@ -22,6 +27,22 @@ imap:
 scheduler:
   # Time to run the daily archive (HH:MM format)
   run_time: "01:00"
+
+# S3 configuration (required when backup_mode is "s3_sync")
+# Uncomment and configure if using s3_sync mode
+#s3:
+#  # S3 bucket name (required)
+#  bucket: my-pec-backups
+#  
+#  # AWS region (required)
+#  region: eu-west-1
+#  
+#  # S3 key prefix for organizing backups (optional, defaults to "pec-backups")
+#  prefix: pec-backups
+#  
+#  # AWS credentials (optional - can use IAM roles, environment variables, or ~/.aws/credentials)
+#  aws_access_key_id: ${AWS_ACCESS_KEY_ID}
+#  aws_secret_access_key: ${AWS_SECRET_ACCESS_KEY}
 
 # Email notification settings
 # Configure to receive daily backup reports and error alerts

@@ -99,6 +99,7 @@ Il file `config/config.yaml` contiene tutte le impostazioni del sistema.
 | Parametro | Descrizione | Default |
 |-----------|-------------|---------|
 | `base_path` | Directory di salvataggio archivi | `/data/pec-archive` |
+| `backup_mode` | Modalità di backup: `standard` o `s3_sync` | `standard` |
 | `concurrency` | Numero di worker paralleli | `4` |
 | `scheduler.run_time` | Orario di esecuzione giornaliera | `01:00` |
 
@@ -150,6 +151,81 @@ imap:
   timeout: 30      # Timeout connessione in secondi
   batch_size: 100  # Messaggi per batch
 ```
+
+### Modalità di Backup
+
+Il sistema supporta due modalità di backup:
+
+#### Modalità Standard (default)
+
+```yaml
+backup_mode: standard
+```
+
+- Scarica le email giornalmente
+- Le salva localmente in formato .eml
+- Crea archivi compressi .tar.gz
+- Conserva gli archivi localmente
+
+#### Modalità S3 Sync
+
+```yaml
+backup_mode: s3_sync
+```
+
+- Scarica le email giornalmente
+- Le salva localmente in formato .eml **non compresso**
+- Crea archivi compressi .tar.gz
+- **Carica gli archivi su Amazon S3**
+- **Elimina gli archivi locali dopo l'upload**
+- Mantiene le email locali consultabili tramite API
+
+### Configurazione S3
+
+Se si utilizza la modalità `s3_sync`, è necessario configurare l'accesso ad Amazon S3:
+
+```yaml
+s3:
+  bucket: my-pec-backups         # Nome del bucket S3
+  region: eu-west-1              # Regione AWS
+  prefix: pec-backups            # Prefisso per le chiavi S3
+  aws_access_key_id: ${AWS_ACCESS_KEY_ID}           # Opzionale
+  aws_secret_access_key: ${AWS_SECRET_ACCESS_KEY}   # Opzionale
+```
+
+#### Credenziali AWS
+
+Le credenziali AWS possono essere fornite in diversi modi:
+
+**1. Variabili d'ambiente (consigliato)**
+
+Nel file `docker-compose.yml`:
+
+```yaml
+environment:
+  - AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+  - AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+```
+
+**2. File ~/.aws/credentials** (se non in Docker)
+
+**3. Ruolo IAM** (se l'applicazione gira su EC2/ECS)
+
+#### Creazione Bucket S3
+
+Prima di utilizzare la modalità S3 Sync, creare un bucket S3:
+
+```bash
+# Tramite AWS Console o CLI
+aws s3 mb s3://my-pec-backups --region eu-west-1
+```
+
+#### Vantaggi della Modalità S3 Sync
+
+- ✅ **Archivio locale consultabile**: Le email rimangono disponibili localmente per ricerche via API
+- ✅ **Backup cloud sicuro**: Copia giornaliera su S3 con ridondanza geografica
+- ✅ **Risparmio spazio**: Solo le email correnti occupano spazio locale
+- ✅ **Disaster recovery**: Backup accessibile anche in caso di guasto del server locale
 
 ---
 

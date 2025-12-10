@@ -102,6 +102,80 @@ class TestValidateConfig:
         assert config['concurrency'] == 4
         assert 'retry_policy' in config
         assert config['accounts'][0]['port'] == 993
+        assert config['backup_mode'] == 'standard'  # Default mode
+    
+    def test_valid_config_with_s3_sync_mode(self):
+        """Test that valid S3 sync configuration passes validation."""
+        config = {
+            'base_path': '/data',
+            'backup_mode': 's3_sync',
+            's3': {
+                'bucket': 'test-bucket',
+                'region': 'us-east-1'
+            },
+            'accounts': [{
+                'username': 'test@example.com',
+                'password': 'secret',
+                'host': 'imap.example.com',
+                'folders': ['INBOX']
+            }]
+        }
+        # Should not raise
+        validate_config(config)
+        
+        assert config['backup_mode'] == 's3_sync'
+    
+    def test_invalid_backup_mode_raises_error(self):
+        """Test that invalid backup mode raises ConfigError."""
+        config = {
+            'base_path': '/data',
+            'backup_mode': 'invalid_mode',
+            'accounts': [{
+                'username': 'test@example.com',
+                'password': 'secret',
+                'host': 'imap.example.com',
+                'folders': ['INBOX']
+            }]
+        }
+        with pytest.raises(ConfigError) as exc_info:
+            validate_config(config)
+        assert 'backup_mode' in str(exc_info.value)
+    
+    def test_s3_sync_without_s3_config_raises_error(self):
+        """Test that s3_sync mode without S3 config raises ConfigError."""
+        config = {
+            'base_path': '/data',
+            'backup_mode': 's3_sync',
+            'accounts': [{
+                'username': 'test@example.com',
+                'password': 'secret',
+                'host': 'imap.example.com',
+                'folders': ['INBOX']
+            }]
+        }
+        with pytest.raises(ConfigError) as exc_info:
+            validate_config(config)
+        assert 's3' in str(exc_info.value).lower()
+    
+    def test_s3_sync_with_invalid_s3_config_raises_error(self):
+        """Test that s3_sync mode with invalid S3 config raises ConfigError."""
+        config = {
+            'base_path': '/data',
+            'backup_mode': 's3_sync',
+            's3': {
+                'region': 'us-east-1'
+                # Missing required 'bucket'
+            },
+            'accounts': [{
+                'username': 'test@example.com',
+                'password': 'secret',
+                'host': 'imap.example.com',
+                'folders': ['INBOX']
+            }]
+        }
+        with pytest.raises(ConfigError) as exc_info:
+            validate_config(config)
+        assert 'bucket' in str(exc_info.value).lower()
 
 
 class TestLoadConfig:
