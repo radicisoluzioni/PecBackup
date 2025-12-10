@@ -35,7 +35,8 @@ class AccountWorker:
         account_config: dict,
         base_path: str,
         retry_policy: dict = None,
-        imap_settings: dict = None
+        imap_settings: dict = None,
+        backup_mode: str = 'standard'
     ):
         """
         Initialize account worker.
@@ -45,9 +46,11 @@ class AccountWorker:
             base_path: Base path for archive storage
             retry_policy: Retry policy configuration
             imap_settings: IMAP settings configuration
+            backup_mode: Backup mode ('standard' or 's3_sync')
         """
         self.account_config = account_config
         self.base_path = base_path
+        self.backup_mode = backup_mode
         self.retry_policy = retry_policy or {
             'max_retries': 3,
             'initial_delay': 5,
@@ -137,6 +140,8 @@ class AccountWorker:
             logger.error(f"Indexing error for {self.username}: {e}")
         
         # Create archive
+        # In standard mode: keep archive locally
+        # In s3_sync mode: create archive for S3 upload (will be handled by scheduler)
         archive_path = None
         digest_path = None
         try:
@@ -146,6 +151,15 @@ class AccountWorker:
                 target_date
             )
             digest_path = create_digest(archive_path)
+            
+            if self.backup_mode == 's3_sync':
+                logger.info(
+                    f"Archive created for S3 upload: {archive_path} "
+                    "(will be uploaded and removed by scheduler)"
+                )
+            else:
+                logger.info(f"Archive created and kept locally: {archive_path}")
+                
         except CompressionError as e:
             self.errors.append({
                 'type': 'compression',

@@ -130,6 +130,27 @@ def validate_config(config: dict) -> None:
         if errors:
             raise ConfigError(f"Invalid notifications configuration: {'; '.join(errors)}")
     
+    # Set default backup mode
+    config.setdefault('backup_mode', 'standard')
+    
+    # Validate backup mode
+    valid_modes = ['standard', 's3_sync']
+    if config['backup_mode'] not in valid_modes:
+        raise ConfigError(
+            f"Invalid backup_mode: {config['backup_mode']}. "
+            f"Must be one of: {', '.join(valid_modes)}"
+        )
+    
+    # Validate S3 configuration if s3_sync mode is enabled
+    if config['backup_mode'] == 's3_sync':
+        if 's3' not in config:
+            raise ConfigError("S3 configuration is required when backup_mode is 's3_sync'")
+        
+        from .s3_storage import validate_s3_config
+        s3_errors = validate_s3_config(config['s3'])
+        if s3_errors:
+            raise ConfigError(f"Invalid S3 configuration: {'; '.join(s3_errors)}")
+    
     # Set defaults for accounts
     for account in config['accounts']:
         account.setdefault('port', 993)
@@ -139,6 +160,7 @@ def get_default_config() -> dict:
     """Return default configuration template."""
     return {
         'base_path': '/data/pec-archive',
+        'backup_mode': 'standard',
         'concurrency': 4,
         'retry_policy': {
             'max_retries': 3,

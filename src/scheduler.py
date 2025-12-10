@@ -51,6 +51,21 @@ class PECScheduler:
         self.accounts = self.config['accounts']
         self.run_time = self.config.get('scheduler', {}).get('run_time', '01:00')
         self.notifications_config = self.config.get('notifications', {})
+        self.backup_mode = self.config.get('backup_mode', 'standard')
+        self.s3_config = self.config.get('s3', {})
+        
+        # Initialize S3 storage if in s3_sync mode
+        self.s3_storage = None
+        if self.backup_mode == 's3_sync':
+            from .s3_storage import S3Storage, S3StorageError
+            try:
+                self.s3_storage = S3Storage(self.s3_config)
+                # Verify S3 bucket access
+                if not self.s3_storage.verify_bucket_access():
+                    logger.warning("S3 bucket access verification failed")
+            except S3StorageError as e:
+                logger.error(f"Failed to initialize S3 storage: {e}")
+                raise
     
     def run_archive_job(self, target_date: datetime = None) -> dict:
         """
@@ -70,9 +85,11 @@ class PECScheduler:
             )
         
         logger.info(f"Starting archive job for date: {target_date.date()}")
+        logger.info(f"Backup mode: {self.backup_mode}")
         logger.info(f"Processing {len(self.accounts)} accounts with {self.concurrency} workers")
         
         summary_paths = []
+        account_results = []  # Store results for S3 upload
         
         with ThreadPoolExecutor(max_workers=self.concurrency) as executor:
             futures = {}
@@ -82,7 +99,8 @@ class PECScheduler:
                     account_config=account,
                     base_path=self.base_path,
                     retry_policy=self.retry_policy,
-                    imap_settings=self.imap_settings
+                    imap_settings=self.imap_settings,
+                    backup_mode=self.backup_mode
                 )
                 future = executor.submit(worker.process, target_date)
                 futures[future] = account['username']
@@ -92,11 +110,16 @@ class PECScheduler:
                 try:
                     summary_path = future.result()
                     summary_paths.append(summary_path)
+                    account_results.append((username, summary_path))
                     logger.info(f"Completed: {username}")
                 except WorkerError as e:
                     logger.error(f"Worker error for {username}: {e}")
                 except Exception as e:
                     logger.error(f"Unexpected error for {username}: {e}")
+        
+        # Handle S3 uploads if in s3_sync mode
+        if self.backup_mode == 's3_sync' and self.s3_storage:
+            self._handle_s3_uploads(account_results, target_date)
         
         # Aggregate summaries
         report = aggregate_summaries(summary_paths)
@@ -111,6 +134,72 @@ class PECScheduler:
         self._send_notification(report, target_date)
         
         return report
+    
+    def _handle_s3_uploads(
+        self,
+        account_results: list[tuple[str, str]],
+        target_date: datetime
+    ) -> None:
+        """
+        Handle S3 uploads for all accounts in s3_sync mode.
+        
+        Args:
+            account_results: List of (username, summary_path) tuples
+            target_date: Date that was archived
+        """
+        import os
+        import json
+        from .storage import Storage
+        from .s3_storage import S3StorageError
+        
+        logger.info("Starting S3 uploads for daily archives...")
+        
+        storage = Storage(self.base_path)
+        
+        for username, summary_path in account_results:
+            try:
+                # Read summary to get archive and digest paths
+                with open(summary_path, 'r', encoding='utf-8') as f:
+                    summary = json.load(f)
+                
+                archive_path = summary.get('archive_path')
+                digest_path = summary.get('digest_path')
+                
+                if not archive_path or not os.path.exists(archive_path):
+                    logger.warning(f"No archive found for {username}, skipping S3 upload")
+                    continue
+                
+                # Upload to S3
+                logger.info(f"Uploading archive for {username} to S3...")
+                result = self.s3_storage.upload_archive(
+                    archive_path=archive_path,
+                    account=username,
+                    date=target_date,
+                    digest_path=digest_path
+                )
+                
+                logger.info(
+                    f"Successfully uploaded to S3: s3://{result['bucket']}/{result['s3_key']}"
+                )
+                
+                # Delete local archive and digest after successful upload
+                try:
+                    if os.path.exists(archive_path):
+                        os.remove(archive_path)
+                        logger.info(f"Deleted local archive: {archive_path}")
+                    
+                    if digest_path and os.path.exists(digest_path):
+                        os.remove(digest_path)
+                        logger.info(f"Deleted local digest: {digest_path}")
+                except OSError as e:
+                    logger.warning(f"Failed to delete local files: {e}")
+                
+            except S3StorageError as e:
+                logger.error(f"S3 upload failed for {username}: {e}")
+            except Exception as e:
+                logger.error(f"Unexpected error during S3 upload for {username}: {e}")
+        
+        logger.info("S3 uploads completed")
     
     def _send_notification(self, report: dict, target_date: datetime) -> None:
         """
