@@ -30,6 +30,8 @@ scheduler:
 
 # S3 configuration (required when backup_mode is "s3_sync")
 # Uncomment and configure if using s3_sync mode
+#
+# For AWS S3:
 #s3:
 #  # S3 bucket name (required)
 #  bucket: my-pec-backups
@@ -41,6 +43,26 @@ scheduler:
 #  prefix: pec-backups
 #  
 #  # AWS credentials (optional - can use IAM roles, environment variables, or ~/.aws/credentials)
+#  aws_access_key_id: ${AWS_ACCESS_KEY_ID}
+#  aws_secret_access_key: ${AWS_SECRET_ACCESS_KEY}
+#
+# For Hetzner Object Storage (S3-compatible):
+#s3:
+#  # S3 bucket name (required)
+#  bucket: my-pec-backups
+#  
+#  # Region (use any valid region name, e.g., eu-central-1)
+#  region: eu-central-1
+#  
+#  # Custom endpoint URL for Hetzner S3 (required for Hetzner)
+#  # Format: https://<your-bucket-name>.s3.<region>.hetzner.cloud
+#  endpoint_url: https://my-pec-backups.s3.eu-central-1.hetzner.cloud
+#  
+#  # S3 key prefix for organizing backups (optional, defaults to "pec-backups")
+#  prefix: pec-backups
+#  
+#  # Hetzner Object Storage credentials (required)
+#  # Note: Hetzner uses AWS-compatible field names for S3 credentials
 #  aws_access_key_id: ${AWS_ACCESS_KEY_ID}
 #  aws_secret_access_key: ${AWS_SECRET_ACCESS_KEY}
 
