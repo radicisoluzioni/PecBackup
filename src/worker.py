@@ -208,14 +208,6 @@ class AccountWorker:
                 'timestamp': datetime.now().isoformat()
             })
             logger.error(f"Compression error for {self.username}: {e}")
-                
-        except CompressionError as e:
-            self.errors.append({
-                'type': 'compression',
-                'message': str(e),
-                'timestamp': datetime.now().isoformat()
-            })
-            logger.error(f"Compression error for {self.username}: {e}")
         
         # Generate summary
         self.end_time = datetime.now()
