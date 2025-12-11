@@ -196,16 +196,20 @@ class PECScheduler:
                         logger.info(f"Deleted local digest: {digest_path}")
                     
                     # Remove the temporary dated directory if it's empty
-                    # (it should only contain the archive and digest we just deleted)
-                    if os.path.exists(archive_dir) and not os.listdir(archive_dir):
-                        os.rmdir(archive_dir)
-                        logger.info(f"Deleted empty dated directory: {archive_dir}")
-                        
-                        # Also try to remove the year directory if empty
-                        year_dir = os.path.dirname(archive_dir)
-                        if os.path.exists(year_dir) and not os.listdir(year_dir):
-                            os.rmdir(year_dir)
-                            logger.info(f"Deleted empty year directory: {year_dir}")
+                    # Use try-catch to handle race conditions
+                    try:
+                        if os.path.exists(archive_dir) and not os.listdir(archive_dir):
+                            os.rmdir(archive_dir)
+                            logger.info(f"Deleted empty dated directory: {archive_dir}")
+                            
+                            # Also try to remove the year directory if empty
+                            year_dir = os.path.dirname(archive_dir)
+                            if os.path.exists(year_dir) and not os.listdir(year_dir):
+                                os.rmdir(year_dir)
+                                logger.info(f"Deleted empty year directory: {year_dir}")
+                    except OSError as e:
+                        # Directory not empty or already deleted - this is fine
+                        logger.debug(f"Could not remove directory (may not be empty): {e}")
                     
                 except OSError as e:
                     logger.warning(f"Failed to delete local files: {e}")

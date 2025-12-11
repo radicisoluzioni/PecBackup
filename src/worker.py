@@ -154,7 +154,8 @@ class AccountWorker:
                 # For S3 sync mode, create a temporary dated structure for the archive
                 # The actual emails are stored without date folders, but we need
                 # a dated archive structure for S3
-                account_name_sanitized = self.username.split('@')[0]
+                from .storage import sanitize_filename
+                account_name_sanitized = sanitize_filename(self.username.split('@')[0])
                 year = target_date.strftime('%Y')
                 date_str = target_date.strftime('%Y-%m-%d')
                 temp_archive_dir = os.path.join(
@@ -173,6 +174,8 @@ class AccountWorker:
                         shutil.copy2(src, dst)
                 
                 # Copy folder structure with emails to temp location
+                # Note: This copies all files, which works well for daily backups.
+                # For very large mailboxes, consider implementing incremental copying.
                 for folder in self.folders:
                     src_folder = os.path.join(account_path, sanitize_folder_name(folder))
                     dst_folder = os.path.join(temp_archive_dir, sanitize_folder_name(folder))
