@@ -138,3 +138,117 @@ class TestStorage:
         messages = storage.get_saved_messages('test@example.com', date, 'INBOX')
         assert len(messages) == 2
         assert all(m.endswith('.eml') for m in messages)
+
+
+class TestStorageWithoutDateFolders:
+    """Tests for Storage class without date-based folder structure."""
+    
+    @pytest.fixture
+    def storage_no_dates(self):
+        """Create a storage instance without date folders."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yield Storage(tmpdir, use_date_folders=False)
+    
+    def test_get_account_path_no_dates(self, storage_no_dates):
+        """Test account path generation without date folders."""
+        date = datetime(2024, 1, 15)
+        path = storage_no_dates.get_account_path('test@example.com', date)
+        
+        assert 'test' in path
+        # Should NOT contain year or date folders
+        assert '2024' not in path
+        assert '2024-01-15' not in path
+        assert path.endswith('test')
+    
+    def test_get_folder_path_no_dates(self, storage_no_dates):
+        """Test folder path generation without date folders."""
+        date = datetime(2024, 1, 15)
+        path = storage_no_dates.get_folder_path('test@example.com', date, 'INBOX')
+        
+        assert 'INBOX' in path
+        # Should NOT contain year or date folders
+        assert '2024' not in path
+        assert '2024-01-15' not in path
+    
+    def test_create_directory_structure_no_dates(self, storage_no_dates):
+        """Test directory structure creation without date folders."""
+        date = datetime(2024, 1, 15)
+        folders = ['INBOX', 'Posta inviata']
+        
+        account_path = storage_no_dates.create_directory_structure(
+            'test@example.com',
+            date,
+            folders
+        )
+        
+        # Should create account/folder structure directly
+        assert os.path.exists(account_path)
+        assert os.path.exists(os.path.join(account_path, 'INBOX'))
+        assert os.path.exists(os.path.join(account_path, 'Posta_inviata'))
+        
+        # Verify no date folders exist
+        assert '2024' not in account_path
+        assert '2024-01-15' not in account_path
+    
+    def test_save_eml_no_dates(self, storage_no_dates):
+        """Test saving .eml file without date folders."""
+        date = datetime(2024, 1, 15)
+        
+        # Create test message
+        msg = EmailMessage()
+        msg['Subject'] = 'Test Subject'
+        msg['From'] = 'sender@example.com'
+        msg['To'] = 'recipient@example.com'
+        msg.set_content('Test body')
+        
+        raw_email = msg.as_bytes()
+        
+        # Create directory structure first
+        storage_no_dates.create_directory_structure('test@example.com', date, ['INBOX'])
+        
+        # Save message
+        filepath = storage_no_dates.save_eml(
+            'test@example.com',
+            date,
+            'INBOX',
+            '123',
+            msg,
+            raw_email
+        )
+        
+        assert os.path.exists(filepath)
+        assert filepath.endswith('.eml')
+        
+        # Verify no date folders in path
+        assert '2024-01-15' not in filepath
+        
+        # Verify content
+        with open(filepath, 'rb') as f:
+            content = f.read()
+        assert b'Test Subject' in content
+    
+    def test_accumulative_storage_no_dates(self, storage_no_dates):
+        """Test that emails accumulate without date folders."""
+        date1 = datetime(2024, 1, 15)
+        date2 = datetime(2024, 1, 16)
+        
+        msg = EmailMessage()
+        msg['Subject'] = 'Test'
+        raw_email = msg.as_bytes()
+        
+        # Create structure for day 1
+        storage_no_dates.create_directory_structure('test@example.com', date1, ['INBOX'])
+        storage_no_dates.save_eml('test@example.com', date1, 'INBOX', '1', msg, raw_email)
+        
+        # Add message for day 2 (should go to same folder)
+        storage_no_dates.create_directory_structure('test@example.com', date2, ['INBOX'])
+        storage_no_dates.save_eml('test@example.com', date2, 'INBOX', '2', msg, raw_email)
+        
+        # Both messages should be in the same folder
+        messages_day1 = storage_no_dates.get_saved_messages('test@example.com', date1, 'INBOX')
+        messages_day2 = storage_no_dates.get_saved_messages('test@example.com', date2, 'INBOX')
+        
+        # Since there are no date folders, both queries should return the same list
+        assert len(messages_day1) == 2
+        assert len(messages_day2) == 2
+        assert set(messages_day1) == set(messages_day2)

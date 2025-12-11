@@ -63,36 +63,44 @@ class Storage:
     Creates directory structure and saves .eml files.
     """
     
-    def __init__(self, base_path: str):
+    def __init__(self, base_path: str, use_date_folders: bool = True):
         """
         Initialize storage handler.
         
         Args:
             base_path: Base path for archive storage
+            use_date_folders: If True, use date-based folders (YYYY/YYYY-MM-DD).
+                            If False, store directly in account/folder structure.
+                            Default: True for backward compatibility.
         """
         self.base_path = base_path
+        self.use_date_folders = use_date_folders
     
     def get_account_path(self, account: str, date: datetime) -> str:
         """
         Get the archive path for an account and date.
         
-        Path format: base_path/account/YYYY/YYYY-MM-DD/
+        Path format (date folders): base_path/account/YYYY/YYYY-MM-DD/
+        Path format (no date folders): base_path/account/
         
         Args:
             account: Account username (email)
-            date: Archive date
+            date: Archive date (ignored if use_date_folders=False)
         
         Returns:
-            Full path to account's date directory
+            Full path to account's directory
         """
         # Sanitize account name (use part before @)
         account_name = account.split('@')[0]
         account_name = sanitize_filename(account_name)
         
-        year = date.strftime('%Y')
-        date_str = date.strftime('%Y-%m-%d')
-        
-        return os.path.join(self.base_path, account_name, year, date_str)
+        if self.use_date_folders:
+            year = date.strftime('%Y')
+            date_str = date.strftime('%Y-%m-%d')
+            return os.path.join(self.base_path, account_name, year, date_str)
+        else:
+            # Direct account folder without date hierarchy
+            return os.path.join(self.base_path, account_name)
     
     def get_folder_path(self, account: str, date: datetime, folder: str) -> str:
         """

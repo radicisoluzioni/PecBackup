@@ -183,7 +183,10 @@ class PECScheduler:
                 )
                 
                 # Delete local archive and digest after successful upload
+                # Also clean up the temporary dated directory
                 try:
+                    archive_dir = os.path.dirname(archive_path)
+                    
                     if os.path.exists(archive_path):
                         os.remove(archive_path)
                         logger.info(f"Deleted local archive: {archive_path}")
@@ -191,6 +194,19 @@ class PECScheduler:
                     if digest_path and os.path.exists(digest_path):
                         os.remove(digest_path)
                         logger.info(f"Deleted local digest: {digest_path}")
+                    
+                    # Remove the temporary dated directory if it's empty
+                    # (it should only contain the archive and digest we just deleted)
+                    if os.path.exists(archive_dir) and not os.listdir(archive_dir):
+                        os.rmdir(archive_dir)
+                        logger.info(f"Deleted empty dated directory: {archive_dir}")
+                        
+                        # Also try to remove the year directory if empty
+                        year_dir = os.path.dirname(archive_dir)
+                        if os.path.exists(year_dir) and not os.listdir(year_dir):
+                            os.rmdir(year_dir)
+                            logger.info(f"Deleted empty year directory: {year_dir}")
+                    
                 except OSError as e:
                     logger.warning(f"Failed to delete local files: {e}")
                 
