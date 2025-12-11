@@ -31,12 +31,14 @@ Sistema batch containerizzato per l'archiviazione automatica giornaliera delle c
 
 ### Modalità S3 Sync
 - Download giornaliero delle email alle 01:00
+- **Salvataggio locale in struttura diretta (senza cartelle per data)**
+- **Mirror completo della casella - i messaggi non vengono mai cancellati localmente**
 - Salvataggio in formato .eml non compresso localmente
-- Generazione indici JSON/CSV
-- Creazione archivio .tar.gz giornaliero
-- **Upload automatico su Amazon S3**
-- **Eliminazione archivio locale dopo upload**
-- Ideale per mantenere un mirror locale consultabile e backup cloud sicuro
+- Generazione indici JSON/CSV globali
+- Creazione archivio .tar.gz giornaliero (con struttura temporanea per data)
+- **Upload automatico su Amazon S3 con organizzazione per data**
+- **Eliminazione archivio locale dopo upload (ma non le email)**
+- Ideale per mantenere un mirror locale completo e consultabile + backup cloud sicuro giornaliero
 
 ## 🚀 Quick Start
 
@@ -92,20 +94,19 @@ docker compose logs -f pec-archiver
 
 ### Modalità S3 Sync
 ```
-/data/pec-archive/                         # Locale
+/data/pec-archive/                         # Locale - Mirror diretto della casella
 └── <account>/
-    └── <YYYY>/
-        └── <YYYY-MM-DD>/
-            ├── INBOX/
-            │   ├── 001_message.eml       # Non compresso, consultabile
-            │   └── 002_message.eml
-            ├── Posta_inviata/
-            │   └── 001_message.eml
-            ├── index.csv
-            ├── index.json
-            └── summary.json
+    ├── INBOX/
+    │   ├── 001_message.eml               # Non compresso, consultabile
+    │   ├── 002_message.eml               # Tutti i messaggi mai cancellati
+    │   └── 003_message.eml
+    ├── Posta_inviata/
+    │   ├── 001_message.eml
+    │   └── 002_message.eml
+    ├── index.csv                          # Indice globale
+    └── index.json                         # Indice globale
 
-s3://my-bucket/pec-backups/                # S3
+s3://my-bucket/pec-backups/                # S3 - Archivi giornalieri
 └── <account>/
     └── <YYYY>/
         └── <YYYY-MM-DD>/
@@ -293,9 +294,11 @@ Se l'applicazione gira su EC2 o ECS, configurare un ruolo IAM con policy S3:
 
 ### Vantaggi della Modalità S3 Sync
 
+- ✅ **Mirror completo della casella** - Copia locale esatta della casella PEC senza cancellazioni
 - ✅ **Archivio locale consultabile** - Email non compresse, ricercabili via API
 - ✅ **Backup cloud sicuro** - Copia giornaliera su S3 con alta affidabilità
-- ✅ **Risparmio spazio locale** - Solo email correnti, archivi su S3
+- ✅ **Risparmio spazio locale** - Solo email, archivi giornalieri su S3
+- ✅ **Organizzazione per data su S3** - Archivi giornalieri facilmente identificabili
 - ✅ **Disaster recovery** - Backup geograficamente distribuito
 - ✅ **Compliance** - Storage class ottimizzabili (Standard-IA, Glacier)
 - ✅ **Flessibilità provider** - Supporto AWS S3, Hetzner, MinIO e altri servizi S3-compatible

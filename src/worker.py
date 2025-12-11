@@ -5,13 +5,15 @@ Processes a single PEC account's mailbox.
 
 from __future__ import annotations
 
+import os
+import shutil
 import logging
 from datetime import datetime
 from typing import Optional
 from email.message import Message
 
 from .imap_client import IMAPClient, IMAPError, with_retry
-from .storage import Storage, StorageError
+from .storage import Storage, StorageError, sanitize_folder_name
 from .indexing import Indexer
 from .compression import create_archive, create_digest, CompressionError
 from .reporting import create_summary
@@ -67,7 +69,10 @@ class AccountWorker:
         self.port = account_config.get('port', 993)
         self.folders = account_config['folders']
         
-        self.storage = Storage(base_path)
+        # In s3_sync mode, use direct mailbox structure (no date folders)
+        # In standard mode, use date-based folders
+        use_date_folders = (backup_mode != 's3_sync')
+        self.storage = Storage(base_path, use_date_folders=use_date_folders)
         self.errors = []
         self.start_time = None
         self.end_time = None
@@ -140,24 +145,63 @@ class AccountWorker:
             logger.error(f"Indexing error for {self.username}: {e}")
         
         # Create archive
-        # In standard mode: keep archive locally
-        # In s3_sync mode: create archive for S3 upload (will be handled by scheduler)
+        # In standard mode: keep archive locally in date folder
+        # In s3_sync mode: create archive of today's emails in a temp dated location for S3 upload
         archive_path = None
         digest_path = None
         try:
-            archive_path = create_archive(
-                account_path,
-                account_name,
-                target_date
-            )
-            digest_path = create_digest(archive_path)
-            
             if self.backup_mode == 's3_sync':
+                # For S3 sync mode, create a temporary dated structure for the archive
+                # The actual emails are stored without date folders, but we need
+                # a dated archive structure for S3
+                from .storage import sanitize_filename
+                account_name_sanitized = sanitize_filename(self.username.split('@')[0])
+                year = target_date.strftime('%Y')
+                date_str = target_date.strftime('%Y-%m-%d')
+                temp_archive_dir = os.path.join(
+                    self.base_path,
+                    account_name_sanitized,
+                    year,
+                    date_str
+                )
+                os.makedirs(temp_archive_dir, exist_ok=True)
+                
+                # Copy index files to temp location for inclusion in archive
+                for filename in ['index.csv', 'index.json']:
+                    src = os.path.join(account_path, filename)
+                    dst = os.path.join(temp_archive_dir, filename)
+                    if os.path.exists(src):
+                        shutil.copy2(src, dst)
+                
+                # Copy folder structure with emails to temp location
+                # Note: This copies all files, which works well for daily backups.
+                # For very large mailboxes, consider implementing incremental copying.
+                for folder in self.folders:
+                    src_folder = os.path.join(account_path, sanitize_folder_name(folder))
+                    dst_folder = os.path.join(temp_archive_dir, sanitize_folder_name(folder))
+                    if os.path.exists(src_folder):
+                        shutil.copytree(src_folder, dst_folder, dirs_exist_ok=True)
+                
+                # Create archive from temporary dated location
+                archive_path = create_archive(
+                    temp_archive_dir,
+                    account_name,
+                    target_date
+                )
+                digest_path = create_digest(archive_path)
+                
                 logger.info(
                     f"Archive created for S3 upload: {archive_path} "
                     "(will be uploaded and removed by scheduler)"
                 )
             else:
+                # Standard mode: create archive in the date folder
+                archive_path = create_archive(
+                    account_path,
+                    account_name,
+                    target_date
+                )
+                digest_path = create_digest(archive_path)
                 logger.info(f"Archive created and kept locally: {archive_path}")
                 
         except CompressionError as e:
