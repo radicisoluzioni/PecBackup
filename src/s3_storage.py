@@ -22,6 +22,7 @@ class S3Storage:
     """
     S3 storage handler for daily archives.
     Uploads compressed daily archives to S3 bucket.
+    Supports AWS S3 and S3-compatible services (e.g., Hetzner, MinIO).
     """
     
     def __init__(self, s3_config: dict):
@@ -29,7 +30,13 @@ class S3Storage:
         Initialize S3 storage handler.
         
         Args:
-            s3_config: S3 configuration dictionary with bucket, region, credentials
+            s3_config: S3 configuration dictionary with:
+                - bucket: Bucket name (required)
+                - region: AWS region (optional, defaults to 'us-east-1')
+                - prefix: Key prefix for organizing backups (optional)
+                - endpoint_url: Custom S3 endpoint URL for S3-compatible services (optional)
+                - aws_access_key_id: Access key (optional)
+                - aws_secret_access_key: Secret key (optional)
         
         Raises:
             S3StorageError: If boto3 is not available or configuration is invalid
@@ -51,6 +58,7 @@ class S3Storage:
         
         self.region = s3_config.get('region', 'us-east-1')
         self.prefix = s3_config.get('prefix', 'pec-backups')
+        self.endpoint_url = s3_config.get('endpoint_url')
         
         # Initialize S3 client
         session_kwargs = {'region_name': self.region}
@@ -62,6 +70,10 @@ class S3Storage:
         if aws_access_key and aws_secret_key:
             session_kwargs['aws_access_key_id'] = aws_access_key
             session_kwargs['aws_secret_access_key'] = aws_secret_key
+        
+        # Add endpoint_url for S3-compatible services (e.g., Hetzner, MinIO)
+        if self.endpoint_url:
+            session_kwargs['endpoint_url'] = self.endpoint_url
         
         try:
             self.s3_client = self.boto3.client('s3', **session_kwargs)

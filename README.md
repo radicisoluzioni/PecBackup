@@ -178,13 +178,25 @@ accounts:
 
 ## ☁️ Configurazione S3 (Modalità S3 Sync)
 
+Il sistema supporta sia Amazon S3 che servizi S3-compatible come **Hetzner Object Storage**, **MinIO**, e altri.
+
 ### Prerequisiti
+
+#### Per AWS S3
 
 1. **Account AWS** con accesso a S3
 2. **Bucket S3** creato nella regione desiderata
 3. **Credenziali AWS** (Access Key ID e Secret Access Key) oppure ruolo IAM
 
-### Setup Bucket S3
+#### Per Hetzner Object Storage
+
+1. **Account Hetzner Cloud**
+2. **Bucket creato** tramite la Hetzner Cloud Console
+3. **Credenziali S3** (Access Key e Secret Key) generate dalla console Hetzner
+
+### Setup Bucket
+
+#### AWS S3
 
 ```bash
 # Creare un bucket S3 (tramite AWS CLI)
@@ -194,7 +206,16 @@ aws s3 mb s3://my-pec-backups --region eu-west-1
 aws s3 ls s3://my-pec-backups
 ```
 
+#### Hetzner Object Storage
+
+1. Accedere alla [Hetzner Cloud Console](https://console.hetzner.cloud/)
+2. Navigare a **Object Storage**
+3. Creare un nuovo bucket nella regione desiderata
+4. Generare le credenziali S3 (Access Key e Secret Key)
+
 ### Configurazione in config.yaml
+
+#### Per AWS S3
 
 ```yaml
 # Abilitare la modalità S3 Sync
@@ -206,23 +227,44 @@ s3:
   region: eu-west-1
   prefix: pec-backups  # Directory nel bucket
   
-  # Opzione 1: Credenziali esplicite (sconsigliato in produzione)
+  # Credenziali (opzionale - può usare IAM roles)
   aws_access_key_id: ${AWS_ACCESS_KEY_ID}
   aws_secret_access_key: ${AWS_SECRET_ACCESS_KEY}
 ```
 
-### Credenziali AWS
+#### Per Hetzner Object Storage
+
+```yaml
+# Abilitare la modalità S3 Sync
+backup_mode: s3_sync
+
+# Configurazione Hetzner S3
+s3:
+  bucket: my-pec-backups
+  region: eu-central-1  # o altra regione
+  prefix: pec-backups
+  
+  # Endpoint Hetzner S3 (richiesto)
+  # Formato: https://<bucket-name>.s3.<region>.hetzner.cloud
+  endpoint_url: https://my-pec-backups.s3.eu-central-1.hetzner.cloud
+  
+  # Credenziali Hetzner (richieste)
+  aws_access_key_id: ${AWS_ACCESS_KEY_ID}
+  aws_secret_access_key: ${AWS_SECRET_ACCESS_KEY}
+```
+
+### Credenziali
 
 #### Opzione 1: Variabili d'Ambiente (Consigliata)
 
 Nel file `.env` o `docker-compose.yml`:
 
 ```bash
-AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
-AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+AWS_ACCESS_KEY_ID=your-access-key-here
+AWS_SECRET_ACCESS_KEY=your-secret-key-here
 ```
 
-#### Opzione 2: Ruolo IAM (Migliore per EC2/ECS)
+#### Opzione 2: Ruolo IAM (Solo per AWS S3 su EC2/ECS)
 
 Se l'applicazione gira su EC2 o ECS, configurare un ruolo IAM con policy S3:
 
@@ -254,6 +296,7 @@ Se l'applicazione gira su EC2 o ECS, configurare un ruolo IAM con policy S3:
 - ✅ **Risparmio spazio locale** - Solo email correnti, archivi su S3
 - ✅ **Disaster recovery** - Backup geograficamente distribuito
 - ✅ **Compliance** - Storage class ottimizzabili (Standard-IA, Glacier)
+- ✅ **Flessibilità provider** - Supporto AWS S3, Hetzner, MinIO e altri servizi S3-compatible
 
 ## 🐳 Docker Compose
 

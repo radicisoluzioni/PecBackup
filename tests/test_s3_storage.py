@@ -115,6 +115,33 @@ class TestS3Storage:
         assert 'aws_access_key_id' in call_kwargs
         assert 'aws_secret_access_key' in call_kwargs
     
+    def test_init_with_endpoint_url(self, s3_config, mock_boto3):
+        """Test initialization with custom endpoint URL for S3-compatible services."""
+        config = {
+            **s3_config,
+            'endpoint_url': 'https://my-bucket.s3.eu-central-1.hetzner.cloud',
+            'aws_access_key_id': 'AKIAIOSFODNN7EXAMPLE',
+            'aws_secret_access_key': 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY'
+        }
+        storage = S3Storage(config)
+        
+        # Verify boto3.client was called with endpoint_url
+        mock_boto3.client.assert_called_once()
+        call_kwargs = mock_boto3.client.call_args[1]
+        assert 'endpoint_url' in call_kwargs
+        assert call_kwargs['endpoint_url'] == 'https://my-bucket.s3.eu-central-1.hetzner.cloud'
+        assert storage.endpoint_url == 'https://my-bucket.s3.eu-central-1.hetzner.cloud'
+    
+    def test_init_without_endpoint_url(self, s3_config, mock_boto3):
+        """Test initialization without endpoint URL for standard AWS S3."""
+        storage = S3Storage(s3_config)
+        
+        # Verify boto3.client was called without endpoint_url
+        mock_boto3.client.assert_called_once()
+        call_kwargs = mock_boto3.client.call_args[1]
+        assert 'endpoint_url' not in call_kwargs
+        assert storage.endpoint_url is None
+    
     def test_upload_archive_success(self, s3_config, mock_boto3, tmp_path):
         """Test successful archive upload."""
         storage = S3Storage(s3_config)
