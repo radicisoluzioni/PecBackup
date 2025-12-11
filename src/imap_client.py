@@ -9,6 +9,7 @@ import imaplib
 import email
 import ssl
 import time
+import re
 import logging
 from datetime import datetime, timedelta
 from email.message import Message
@@ -156,7 +157,7 @@ class IMAPClient:
         except imaplib.IMAP4.error as e:
             raise IMAPError(f"Search failed: {e}")
     
-    def fetch_message(self, uid: bytes) -> tuple[Message, bytes]:
+    def fetch_message(self, uid: bytes) -> tuple[Message, bytes, list[bytes]]:
         """
         Fetch a single message by UID.
         
@@ -164,7 +165,7 @@ class IMAPClient:
             uid: Message UID
         
         Returns:
-            Tuple of (parsed Message object, raw email bytes)
+            Tuple of (parsed Message object, raw email bytes, flags list)
         
         Raises:
             IMAPError: If fetch fails
@@ -173,13 +174,29 @@ class IMAPClient:
             raise IMAPError("Not connected to IMAP server")
         
         try:
-            status, data = self.connection.fetch(uid, '(RFC822)')
+            status, data = self.connection.fetch(uid, '(RFC822 FLAGS)')
             if status != 'OK':
                 raise IMAPError(f"Failed to fetch message {uid}: {data}")
             
             raw_email = data[0][1]
             msg = email.message_from_bytes(raw_email)
-            return msg, raw_email
+            
+            # Parse flags from response
+            # data[0][0] contains something like: b'1 (FLAGS (\\Seen) RFC822 {12345}'
+            # Standard IMAP flags: \Seen, \Answered, \Flagged, \Draft, \Deleted, \Recent
+            flags = []
+            if data[0][0]:
+                flags_str = data[0][0].decode('utf-8')
+                if 'FLAGS' in flags_str:
+                    # Extract flags between parentheses after FLAGS
+                    # Pattern matches standard IMAP flags which don't contain nested parentheses
+                    flags_match = re.search(r'FLAGS \(([^)]*)\)', flags_str)
+                    if flags_match:
+                        flags_content = flags_match.group(1)
+                        if flags_content:
+                            flags = [f.strip().encode('utf-8') for f in flags_content.split()]
+            
+            return msg, raw_email, flags
         except imaplib.IMAP4.error as e:
             raise IMAPError(f"Failed to fetch message {uid}: {e}")
     
@@ -188,7 +205,7 @@ class IMAPClient:
         folder: str,
         target_date: datetime,
         batch_size: int = 100
-    ) -> Generator[tuple[Message, bytes, str], None, None]:
+    ) -> Generator[tuple[Message, bytes, str, list[bytes]], None, None]:
         """
         Fetch all messages from a folder for a specific date.
         
@@ -198,7 +215,7 @@ class IMAPClient:
             batch_size: Number of messages to fetch per batch
         
         Yields:
-            Tuple of (Message object, raw email bytes, UID string)
+            Tuple of (Message object, raw email bytes, UID string, flags list)
         
         Raises:
             IMAPError: If fetch fails
@@ -212,8 +229,8 @@ class IMAPClient:
             batch = uids[i:i + batch_size]
             for uid in batch:
                 try:
-                    msg, raw_email = self.fetch_message(uid)
-                    yield msg, raw_email, uid.decode('utf-8')
+                    msg, raw_email, flags = self.fetch_message(uid)
+                    yield msg, raw_email, uid.decode('utf-8'), flags
                 except IMAPError as e:
                     logger.error(f"Failed to fetch message {uid}: {e}")
                     continue

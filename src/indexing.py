@@ -70,7 +70,8 @@ def extract_message_info(
     message: Message,
     uid: str,
     folder: str,
-    filepath: str
+    filepath: str,
+    is_unread: bool = False
 ) -> dict:
     """
     Extract metadata from an email message.
@@ -80,6 +81,7 @@ def extract_message_info(
         uid: Message UID
         folder: IMAP folder name
         filepath: Path to saved .eml file
+        is_unread: Whether the message is unread
     
     Returns:
         Dictionary with message metadata
@@ -97,7 +99,8 @@ def extract_message_info(
         'cc': decode_email_header(message.get('Cc')),
         'date': date.isoformat() if date else '',
         'message_id': message.get('Message-ID', ''),
-        'size': os.path.getsize(filepath) if os.path.exists(filepath) else 0
+        'size': os.path.getsize(filepath) if os.path.exists(filepath) else 0,
+        'is_unread': is_unread
     }
 
 
@@ -140,7 +143,8 @@ class Indexer:
         message: Message,
         uid: str,
         folder: str,
-        filepath: str
+        filepath: str,
+        is_unread: bool = False
     ) -> None:
         """
         Add a message to the index.
@@ -150,8 +154,9 @@ class Indexer:
             uid: Message UID
             folder: IMAP folder name
             filepath: Path to saved .eml file
+            is_unread: Whether the message is unread
         """
-        info = extract_message_info(message, uid, folder, filepath)
+        info = extract_message_info(message, uid, folder, filepath, is_unread)
         self.messages.append(info)
     
     def load_messages_from_files(
@@ -184,7 +189,7 @@ class Indexer:
         
         fieldnames = [
             'uid', 'folder', 'filename', 'subject', 'from', 'to',
-            'cc', 'date', 'message_id', 'size'
+            'cc', 'date', 'message_id', 'size', 'is_unread'
         ]
         
         with open(csv_path, 'w', newline='', encoding='utf-8') as f:

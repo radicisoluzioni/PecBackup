@@ -243,7 +243,7 @@ class AccountWorker:
             target_date: Date to fetch messages for
             indexer: Indexer to add messages to
         """
-        for msg, raw_email, uid in client.fetch_messages_by_date(
+        for msg, raw_email, uid, flags in client.fetch_messages_by_date(
             folder,
             target_date,
             batch_size=self.imap_settings['batch_size']
@@ -257,7 +257,10 @@ class AccountWorker:
                     msg,
                     raw_email
                 )
-                indexer.add_message(msg, uid, folder, filepath)
+                # Check if message is unread (doesn't have \Seen flag)
+                # Note: flags are bytes like b'\\Seen', b'\\Answered', etc.
+                is_unread = not any(flag.lower() == b'\\seen' for flag in flags)
+                indexer.add_message(msg, uid, folder, filepath, is_unread=is_unread)
             except StorageError as e:
                 self.errors.append({
                     'type': 'storage',
