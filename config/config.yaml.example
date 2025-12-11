@@ -5,8 +5,10 @@
 base_path: /data/pec-archive
 
 # Backup mode: "standard" or "s3_sync"
-# - standard: Compress and keep archives locally (default)
-# - s3_sync: Store uncompressed emails locally, upload daily archives to S3, then delete local archives
+# - standard: Compress and keep archives locally with date-based folder structure (default)
+# - s3_sync: Store emails locally in direct mailbox mirror (no date folders), 
+#            upload daily archives to S3 with date organization, then delete only the archives
+#            (local emails are never deleted - cumulative mirror)
 backup_mode: standard
 
 # Number of concurrent workers for processing accounts
