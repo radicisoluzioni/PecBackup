@@ -62,6 +62,7 @@ scheduler:
 #  prefix: pec-backups
 #  
 #  # Hetzner Object Storage credentials (required)
+#  # Note: Hetzner uses AWS-compatible field names for S3 credentials
 #  aws_access_key_id: ${AWS_ACCESS_KEY_ID}
 #  aws_secret_access_key: ${AWS_SECRET_ACCESS_KEY}
 

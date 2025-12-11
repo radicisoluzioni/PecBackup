@@ -260,6 +260,8 @@ s3:
 Nel file `.env` o `docker-compose.yml`:
 
 ```bash
+# Per AWS S3 o Hetzner Object Storage
+# Nota: Hetzner usa nomi di campo compatibili con AWS per le credenziali S3
 AWS_ACCESS_KEY_ID=your-access-key-here
 AWS_SECRET_ACCESS_KEY=your-secret-key-here
 ```
